@@ -15,6 +15,7 @@ public class ConnectorServerHandler extends SimpleChannelInboundHandler<Message>
 
     private final RabbitmqClient rabbitmqClient;
     private String deviceId;
+    private PushConsumer consumer;
 
     public ConnectorServerHandler(final RabbitmqClient rabbitmqClient) {
         this.rabbitmqClient = rabbitmqClient;
@@ -25,16 +26,16 @@ public class ConnectorServerHandler extends SimpleChannelInboundHandler<Message>
         if (msg instanceof NotificationAck) {
             NotificationAck ack = (NotificationAck)msg;
 
-            // because we use tcp to transfer push notification, so here
-            // we can ack multiple
-            rabbitmqClient.ack(ack.getDeliveryTag(), false);
+            // because we use tcp to transfer push notification and
+            // per channel per consumer, so here we can ack multiple
+            rabbitmqClient.ack(consumer, ack.getDeliveryTag(), true);
         } if (msg instanceof LoginRequest) {
             LoginRequest request = (LoginRequest)msg;
 
             deviceId = request.getDeviceId();
 
             try {
-                rabbitmqClient.consume(deviceId, new PushConsumer(ctx.channel()));
+                consumer = rabbitmqClient.consume(deviceId, ctx.channel());
             } catch (Exception ex) {
                 ctx.close();
             }

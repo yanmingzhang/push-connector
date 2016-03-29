@@ -6,28 +6,17 @@ import io.sunfly.push.message.PushNotification;
 import java.io.IOException;
 
 import com.rabbitmq.client.AMQP.BasicProperties;
-import com.rabbitmq.client.Consumer;
+import com.rabbitmq.client.DefaultConsumer;
 import com.rabbitmq.client.Envelope;
-import com.rabbitmq.client.ShutdownSignalException;
 
-public class PushConsumer implements Consumer {
+public class PushConsumer extends DefaultConsumer {
 
-    private final Channel channel;
+    private final Channel ioChannel;
 
-    public PushConsumer(Channel channel) {
-        this.channel = channel;
-    }
+    public PushConsumer(com.rabbitmq.client.Channel channel, Channel ioChannel) {
+        super(channel);
 
-    @Override
-    public void handleConsumeOk(String consumerTag) {
-    }
-
-    @Override
-    public void handleCancelOk(String consumerTag) {
-    }
-
-    @Override
-    public void handleCancel(String consumerTag) throws IOException {
+        this.ioChannel = ioChannel;
     }
 
     @Override
@@ -39,17 +28,13 @@ public class PushConsumer implements Consumer {
         long timestamp = properties.getTimestamp().getTime();
 
         PushNotification pn = new PushNotification(deliveryTag, timestamp, null, null);
-        channel.write(pn);
+        ioChannel.write(pn);
 
         // TODO: implement group flush?
-        channel.flush();
+        ioChannel.flush();
     }
 
-    @Override
-    public void handleShutdownSignal(String consumerTag, ShutdownSignalException sig) {
-    }
-
-    @Override
-    public void handleRecoverOk(String consumerTag) {
+    public Channel getIoChannel() {
+        return ioChannel;
     }
 }
