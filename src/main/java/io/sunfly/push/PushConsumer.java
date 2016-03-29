@@ -33,7 +33,7 @@ public class PushConsumer implements Consumer {
     @Override
     public void handleDelivery(String consumerTag, Envelope envelope, BasicProperties properties, byte[] body)
             throws IOException {
-        // delivery tag is a increasing sequence number
+        // delivery tag is an increasing sequence number per channel
         long deliveryTag = envelope.getDeliveryTag();
 
         long timestamp = properties.getTimestamp().getTime();
