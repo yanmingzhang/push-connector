@@ -45,6 +45,7 @@ public class ConnectorServer
 
         workerGroup.shutdownGracefully();
         bossGroup.shutdownGracefully();
+        rabbitmqClient.close();
     }
 
     public static void main(String[] args) throws Exception {

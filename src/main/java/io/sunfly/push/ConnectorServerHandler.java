@@ -3,7 +3,7 @@ package io.sunfly.push;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.timeout.ReadTimeoutException;
-import io.sunfly.push.message.AckNotification;
+import io.sunfly.push.message.NotificationAck;
 import io.sunfly.push.message.LoginRequest;
 import io.sunfly.push.message.Message;
 
@@ -22,12 +22,12 @@ public class ConnectorServerHandler extends SimpleChannelInboundHandler<Message>
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, Message msg) throws Exception {
-        if (msg instanceof AckNotification) {
-            AckNotification ack = (AckNotification)msg;
+        if (msg instanceof NotificationAck) {
+            NotificationAck ack = (NotificationAck)msg;
 
             // because we use tcp to transfer push notification, so here
             // we can ack multiple
-            rabbitmqClient.getChannel().basicAck(ack.getDeliveryTag(), true);
+            rabbitmqClient.ack(ack.getDeliveryTag(), true);
         } if (msg instanceof LoginRequest) {
             LoginRequest request = (LoginRequest)msg;
 

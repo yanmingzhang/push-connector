@@ -2,14 +2,14 @@ package io.sunfly.push.message;
 
 import io.netty.buffer.ByteBuf;
 
-public class AckNotification implements Message {
+public class NotificationAck implements Message {
 
     private long deliveryTag;
 
-    public AckNotification() {
+    public NotificationAck() {
     }
 
-    public AckNotification(long deliveryTag) {
+    public NotificationAck(long deliveryTag) {
         this.deliveryTag = deliveryTag;
     }
 
@@ -20,7 +20,7 @@ public class AckNotification implements Message {
 
     @Override
     public void encode(ByteBuf out) {
-        out.writeByte(MessageTypes.ACK_NOTIFICATION);
+        out.writeByte(MessageTypes.NOTIFICATION_ACK);
 
         out.writeLong(deliveryTag);
     }

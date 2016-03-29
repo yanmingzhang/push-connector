@@ -58,6 +58,10 @@ public class RabbitmqClient implements AutoCloseable {
         }
     }
 
+    public void ack(long deliveryTag, boolean multiple) throws IOException {
+        channel.basicAck(deliveryTag, multiple);
+    }
+
     @Override
     public void close() throws Exception {
         // cancel consumers
@@ -68,10 +72,6 @@ public class RabbitmqClient implements AutoCloseable {
         try { channel.close(); } catch (Exception ex) {}
 
         try { conn.close(); } catch (Exception ex) {}
-    }
-
-    public Channel getChannel() {
-        return channel;
     }
 
     public static void main(String[] args) throws Exception {
