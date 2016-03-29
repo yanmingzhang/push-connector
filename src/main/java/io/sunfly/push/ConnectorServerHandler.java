@@ -1,13 +1,14 @@
 package io.sunfly.push;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.timeout.ReadTimeoutException;
+import io.sunfly.push.message.AckNotification;
 import io.sunfly.push.message.LoginRequest;
 import io.sunfly.push.message.Message;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ConnectorServerHandler extends SimpleChannelInboundHandler<Message> {
     private static final Logger logger = LoggerFactory.getLogger(ConnectorServerHandler.class);
@@ -21,7 +22,13 @@ public class ConnectorServerHandler extends SimpleChannelInboundHandler<Message>
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, Message msg) throws Exception {
-        if (msg instanceof LoginRequest) {
+        if (msg instanceof AckNotification) {
+            AckNotification ack = (AckNotification)msg;
+
+            // because we use tcp to transfer push notification, so here
+            // we can ack multiple
+            rabbitmqClient.getChannel().basicAck(ack.getDeliveryTag(), true);
+        } if (msg instanceof LoginRequest) {
             LoginRequest request = (LoginRequest)msg;
 
             deviceId = request.getDeviceId();

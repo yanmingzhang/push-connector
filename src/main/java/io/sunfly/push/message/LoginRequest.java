@@ -1,9 +1,9 @@
 package io.sunfly.push.message;
 
-import java.nio.charset.StandardCharsets;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
+
+import java.nio.charset.StandardCharsets;
 
 public class LoginRequest implements Message {
     private String deviceId;
@@ -17,7 +17,14 @@ public class LoginRequest implements Message {
     }
 
     @Override
+    public int estimateSize() {
+        return 3 + (1 + deviceId.length() * MAX_BYTES_PER_CHAR_UTF8);
+    }
+
+    @Override
     public void encode(ByteBuf out) {
+        out.writeByte(MessageTypes.REQ_LOGIN);
+
         int index = out.writerIndex();
         out.writerIndex(index + 1);
         int length = ByteBufUtil.writeUtf8(out, deviceId);

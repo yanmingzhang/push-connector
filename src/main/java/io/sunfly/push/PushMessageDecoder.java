@@ -1,13 +1,14 @@
 package io.sunfly.push;
 
-import java.util.List;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import io.sunfly.push.message.AckNotification;
 import io.sunfly.push.message.LoginRequest;
 import io.sunfly.push.message.Message;
 import io.sunfly.push.message.MessageTypes;
+
+import java.util.List;
 
 public class PushMessageDecoder extends ByteToMessageDecoder {
 
@@ -15,20 +16,32 @@ public class PushMessageDecoder extends ByteToMessageDecoder {
     public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         int readableBytes = in.readableBytes();
 
-        if (readableBytes < 6)
+        if (readableBytes < 2) {
             return;
+        }
 
-        long size = in.getUnsignedInt(in.readerIndex());
-        if (readableBytes < size)
+        // max 64K bytes
+        int size = in.getUnsignedShort(in.readerIndex());
+        if (readableBytes < size) {
             return;
+        }
 
         // decode message
-        in.skipBytes(4);    // size
-        int type = in.readUnsignedShort();
+        in.skipBytes(2);    // skip size field
+
+        if (size == 2) {
+            // heartbeat
+            return;
+        }
+
+        int type = in.readUnsignedByte();
         Message message;
         switch (type) {
         case MessageTypes.REQ_LOGIN:
             message = new LoginRequest();
+            break;
+        case MessageTypes.ACK_NOTIFICATION:
+            message = new AckNotification();
             break;
         default:
             throw new IllegalArgumentException();

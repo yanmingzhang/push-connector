@@ -9,15 +9,21 @@ public class PushMessageEncoder extends MessageToByteEncoder<Message> {
 
     @Override
     public void encode(ChannelHandlerContext ctx, Message msg, ByteBuf out) throws Exception {
+        int index = out.writerIndex();
+        out.writerIndex(out.writerIndex() + 2);     // size
+
         msg.encode(out);
+        out.setShort(index, out.readableBytes());
     }
 
     @Override
     public ByteBuf allocateBuffer(ChannelHandlerContext ctx, Message msg, boolean preferDirect) throws Exception {
+        int msgSize = msg.estimateSize();
+
         if (preferDirect) {
-            return ctx.alloc().ioBuffer();
+            return ctx.alloc().ioBuffer(msgSize, msgSize);
         } else {
-            return ctx.alloc().heapBuffer();
+            return ctx.alloc().heapBuffer(msgSize, msgSize);
         }
     }
 }

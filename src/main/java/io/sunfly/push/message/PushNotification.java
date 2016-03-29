@@ -1,11 +1,13 @@
 package io.sunfly.push.message;
 
-import java.nio.charset.StandardCharsets;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
+import java.nio.charset.StandardCharsets;
+
 public class PushNotification implements Message {
+    private long deliveryTag;
+    private long timestamp;     // elapsed milliseconds since EPOCH
     private String title;
     private String content;
 
@@ -13,13 +15,26 @@ public class PushNotification implements Message {
 
     }
 
-    public PushNotification(String title, String content) {
+    public PushNotification(long deliveryTag, long timestamp, String title, String content) {
+        this.deliveryTag = deliveryTag;
+        this.timestamp = timestamp;
         this.title = title;
         this.content = content;
     }
 
     @Override
+    public int estimateSize() {
+        return 3 + 8 + 8 + (1 + title.length() * MAX_BYTES_PER_CHAR_UTF8) +
+                (2 + content.length() * MAX_BYTES_PER_CHAR_UTF8);
+    }
+
+    @Override
     public void encode(ByteBuf out) {
+        out.writeByte(MessageTypes.PUSH_NOTIFICATION);
+
+        out.writeLong(deliveryTag);
+        out.writeLong(timestamp);
+
         int index;
         int length;
 
@@ -37,6 +52,9 @@ public class PushNotification implements Message {
 
     @Override
     public void decode(ByteBuf in) {
+        deliveryTag = in.readLong();
+        timestamp = in.readLong();
+
         int length;
 
         length = in.readUnsignedByte();
@@ -46,6 +64,14 @@ public class PushNotification implements Message {
         length = in.readUnsignedShort();
         content = in.toString(in.readerIndex(), length, StandardCharsets.UTF_8);
         in.skipBytes(length);
+    }
+
+    public long getDeliveryTag() {
+        return deliveryTag;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
     }
 
     public String getTitle() {

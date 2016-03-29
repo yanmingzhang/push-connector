@@ -13,14 +13,14 @@ import io.netty.handler.timeout.ReadTimeoutHandler;
 
 public class ConnectorServer
 {
-    private final int port;
+    private final Config conf;
 
-    public ConnectorServer(int port) {
-        this.port = port;
+    public ConnectorServer(Config conf) {
+        this.conf = conf;
     }
 
     public void run() throws Exception {
-        final RabbitmqClient rabbitmqClient = new RabbitmqClient();
+        final RabbitmqClient rabbitmqClient = new RabbitmqClient(conf);
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
@@ -40,14 +40,15 @@ public class ConnectorServer
           .childOption(ChannelOption.TCP_NODELAY, Boolean.TRUE);
 
         // Bind and start to accept incoming connections.
-        ChannelFuture f = sb.bind(port).sync();
+        ChannelFuture f = sb.bind(conf.getListenPort()).sync();
         f.channel().closeFuture().sync();
+
         workerGroup.shutdownGracefully();
         bossGroup.shutdownGracefully();
     }
 
     public static void main(String[] args) throws Exception {
-        int port = 56572;
-        new ConnectorServer(port).run();
+        Config conf = Config.load();
+        new ConnectorServer(conf).run();
     }
 }
