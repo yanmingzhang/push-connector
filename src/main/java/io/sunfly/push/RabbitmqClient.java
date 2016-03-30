@@ -1,5 +1,7 @@
 package io.sunfly.push;
 
+import io.netty.channel.ChannelHandlerContext;
+
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
@@ -27,7 +29,7 @@ public class RabbitmqClient implements AutoCloseable {
         consumerMap = new ConcurrentHashMap<String, PushConsumer>(16384);
     }
 
-    public PushConsumer consume(String queue, io.netty.channel.Channel ioChannel) throws IOException {
+    public PushConsumer consume(String queue, ChannelHandlerContext ctx) throws IOException {
         if (consumerMap.containsKey(queue)) {
             // dup consumer?
             throw new IllegalStateException("Duplicate consumer");
@@ -44,7 +46,7 @@ public class RabbitmqClient implements AutoCloseable {
 
         channel.queueDeclare(queue, true, false, false, null);
 
-        PushConsumer consumer = new PushConsumer(channel, ioChannel);
+        PushConsumer consumer = new PushConsumer(channel, ctx);
         channel.basicConsume(queue, false, consumer);
 
         consumerMap.put(queue, consumer);

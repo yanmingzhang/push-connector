@@ -37,7 +37,7 @@ public class ConnectorServerHandler extends SimpleChannelInboundHandler<Message>
             deviceId = request.getDeviceId();
 
             try {
-                consumer = rabbitmqClient.consume(deviceId, ctx.channel());
+                consumer = rabbitmqClient.consume(deviceId, ctx);
             } catch (Exception ex) {
                 ctx.close();
             }
