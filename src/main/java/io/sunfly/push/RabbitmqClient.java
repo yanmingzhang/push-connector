@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeoutException;
 
+import com.rabbitmq.client.Address;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
@@ -19,10 +20,9 @@ public class RabbitmqClient implements AutoCloseable {
         this.conf = conf;
 
         ConnectionFactory cf = new ConnectionFactory();
-        cf.setHost(conf.getMqAddresses());
         cf.setUsername(conf.getMqUsername());
         cf.setPassword(conf.getMqPassword());
-        conn = cf.newConnection();
+        conn = cf.newConnection(Address.parseAddresses(conf.getMqAddresses()));
 
         consumerMap = new ConcurrentHashMap<String, PushConsumer>(16384);
     }
