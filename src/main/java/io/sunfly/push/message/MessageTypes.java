@@ -6,8 +6,10 @@ public class MessageTypes {
     // device to server message types
     public static final int REQ_LOGIN = 1;
     public static final int NOTIFICATION_ACK = 2;
+    public static final int REQ_GET_NOTIFICATION = 3;
 
     // server to device message types
     public static final int RSP_LOGIN = SERVER_TO_DEVICE_BASE + 1;
     public static final int PUSH_NOTIFICATION = SERVER_TO_DEVICE_BASE + 2;
+    public static final int RSP_GET_NOTIFICATION = SERVER_TO_DEVICE_BASE + 3;
 }

@@ -3,11 +3,13 @@ package io.sunfly.push;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.timeout.ReadTimeoutException;
+import io.sunfly.push.message.GetNotificationRequest;
 import io.sunfly.push.message.LoginRequest;
 import io.sunfly.push.message.Message;
 import io.sunfly.push.message.NotificationAck;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,40 +17,40 @@ import org.slf4j.LoggerFactory;
 public class ConnectorServerHandler extends SimpleChannelInboundHandler<Message> {
     private static final Logger logger = LoggerFactory.getLogger(ConnectorServerHandler.class);
 
-    private final RabbitmqClient rabbitmqClient;
+    private final CassandraClient cassandraClient;
+    private final ExecutorService executorService;
     private String deviceId;
-    private PushConsumer consumer;
 
-    public ConnectorServerHandler(final RabbitmqClient rabbitmqClient) {
-        this.rabbitmqClient = rabbitmqClient;
+    public ConnectorServerHandler(CassandraClient cassandraClient, ExecutorService executorService) {
+        this.cassandraClient = cassandraClient;
+        this.executorService = executorService;
     }
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, Message msg) throws Exception {
-        if (msg instanceof NotificationAck) {
-            NotificationAck ack = (NotificationAck)msg;
-
-            // because we use tcp to transfer push notification and
-            // per channel per consumer, so here we can ack multiple
-            rabbitmqClient.ack(consumer, ack.getDeliveryTag(), true);
-        } if (msg instanceof LoginRequest) {
+        if (msg instanceof LoginRequest) {
             LoginRequest request = (LoginRequest)msg;
-
             deviceId = request.getDeviceId();
+            return;
+        }
 
-            try {
-                consumer = rabbitmqClient.consume(deviceId, ctx);
-            } catch (Exception ex) {
-                ctx.close();
-            }
+        if (deviceId == null) {
+            // Bad request
+            ctx.close();
+            return;
+        }
+
+        if (msg instanceof GetNotificationRequest) {
+            GetNotificationRequest request = (GetNotificationRequest)msg;
+            GetNotificationTask task = new GetNotificationTask(cassandraClient, ctx,
+                    deviceId, request.getMinCreateTime());
+            executorService.submit(task);
+        } else if (msg instanceof NotificationAck) {
         }
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        if (deviceId != null) {
-            rabbitmqClient.cancel(deviceId);
-        }
     }
 
     @Override

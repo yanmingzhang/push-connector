@@ -11,6 +11,9 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class ConnectorServer
 {
     private final Config conf;
@@ -20,7 +23,8 @@ public class ConnectorServer
     }
 
     public void run() throws Exception {
-        final RabbitmqClient rabbitmqClient = new RabbitmqClient(conf);
+        final CassandraClient cassandraClient = new CassandraClient(conf.getAddress());
+        final ExecutorService executorService = Executors.newFixedThreadPool(8);
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
@@ -34,7 +38,7 @@ public class ConnectorServer
                 pipeline.addLast(new ReadTimeoutHandler(300));  // 5 minutes
                 pipeline.addLast(new PushMessageEncoder());
                 pipeline.addLast(new PushMessageDecoder());
-                pipeline.addLast(new ConnectorServerHandler(rabbitmqClient));
+                pipeline.addLast(new ConnectorServerHandler(cassandraClient, executorService));
             }
           })
           .childOption(ChannelOption.TCP_NODELAY, Boolean.TRUE);
@@ -45,7 +49,8 @@ public class ConnectorServer
 
         workerGroup.shutdownGracefully();
         bossGroup.shutdownGracefully();
-        rabbitmqClient.close();
+        executorService.shutdown();
+        cassandraClient.close();
     }
 
     public static void main(String[] args) throws Exception {
