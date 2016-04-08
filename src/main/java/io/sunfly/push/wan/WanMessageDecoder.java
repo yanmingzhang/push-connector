@@ -1,19 +1,17 @@
-package io.sunfly.push;
+package io.sunfly.push.wan;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import io.sunfly.push.message.GetNotificationRequest;
-import io.sunfly.push.message.GetNotificationResponse;
-import io.sunfly.push.message.LoginRequest;
-import io.sunfly.push.message.Message;
-import io.sunfly.push.message.MessageTypes;
-import io.sunfly.push.message.NotificationAck;
-import io.sunfly.push.message.PushNotification;
+import io.sunfly.push.Message;
+import io.sunfly.push.wan.message.LoginRequest;
+import io.sunfly.push.wan.message.MessageTypes;
+import io.sunfly.push.wan.message.NotificationAck;
+import io.sunfly.push.wan.message.PushNotification;
 
 import java.util.List;
 
-public class PushMessageDecoder extends ByteToMessageDecoder {
+public class WanMessageDecoder extends ByteToMessageDecoder {
 
     @Override
     public void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
@@ -47,15 +45,10 @@ public class PushMessageDecoder extends ByteToMessageDecoder {
         case MessageTypes.NOTIFICATION_ACK:
             message = new NotificationAck();
             break;
-        case MessageTypes.REQ_GET_NOTIFICATION:
-            message = new GetNotificationRequest();
-            break;
         // server to device
         case MessageTypes.PUSH_NOTIFICATION:
             message = new PushNotification();
             break;
-        case MessageTypes.RSP_GET_NOTIFICATION:
-            message = new GetNotificationResponse();
         default:
             throw new IllegalArgumentException("Unknown message type");
         }

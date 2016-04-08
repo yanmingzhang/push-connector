@@ -1,4 +1,4 @@
-package io.sunfly.push.message;
+package io.sunfly.push;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.util.CharsetUtil;

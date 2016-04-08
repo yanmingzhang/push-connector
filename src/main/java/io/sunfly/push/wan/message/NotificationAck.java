@@ -1,6 +1,7 @@
-package io.sunfly.push.message;
+package io.sunfly.push.wan.message;
 
 import io.netty.buffer.ByteBuf;
+import io.sunfly.push.Message;
 
 public class NotificationAck implements Message {
 

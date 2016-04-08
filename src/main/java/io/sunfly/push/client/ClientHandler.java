@@ -4,9 +4,12 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.timeout.IdleStateEvent;
-import io.sunfly.push.message.GetNotificationResponse;
+import io.netty.util.AttributeKey;
+import io.sunfly.push.model.Notification;
+import io.sunfly.push.wan.message.PushNotification;
 
 public class ClientHandler extends ChannelInboundHandlerAdapter {
+    public static final AttributeKey<String> AK_DEVICE_ID = AttributeKey.newInstance("deviceId");
 
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt)
@@ -22,8 +25,12 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg)
             throws Exception {
-        if (msg instanceof GetNotificationResponse) {
-            GetNotificationResponse response = (GetNotificationResponse)msg;
+        if (msg instanceof PushNotification) {
+            PushNotification pn = (PushNotification)msg;
+            Notification notification = pn.getNotification();
+            System.out.format("deviceId = %s, topic = %s, create time = %s, content = %s\n",
+                    ctx.channel().attr(AK_DEVICE_ID).get(), notification.getTopic(),
+                    notification.getCreateTime(), notification.getContent());
         } else {
             System.err.println("Unknown message: " + msg.getClass().getSimpleName());
         }

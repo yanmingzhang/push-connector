@@ -1,12 +1,14 @@
 package io.sunfly.push;
 
+import io.sunfly.push.model.Device;
 import io.sunfly.push.model.Notification;
-import io.sunfly.push.model.QueueItem;
 
 import java.io.Closeable;
+import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import com.datastax.driver.core.BoundStatement;
@@ -26,44 +28,56 @@ public class CassandraClient implements Closeable {
         session = cluster.connect("push");
     }
 
-    public List<Notification> getNotifications(String deviceId, UUID minCreateTime) {
-        PreparedStatement ps;
-        BoundStatement bs;
-        ResultSet rs;
+    public Device getDevice(String deviceId) {
+        PreparedStatement ps = session.prepare("SELECT last_active_time, province, topics FROM devices WHERE device_id=?");
+        BoundStatement bs = ps.bind(deviceId);
 
-        ps = session.prepare("SELECT app_name, create_time, msg_create_time FROM queues WHERE device_id=? AND create_time>? ORDER BY create_time ASC");
-        bs = ps.bind(deviceId, minCreateTime);
+        Row row = session.execute(bs).one();
+        if (row == null) {
+            return null;
+        }
 
-        List<QueueItem> items = new ArrayList<QueueItem>();
-        rs = session.execute(bs);
+        Date lastActiveTime = row.getTimestamp(0);
+        String province = row.getString(1);
+        Set<String> topics = row.getSet(2, String.class);
+
+        return new Device(deviceId, lastActiveTime, province, topics);
+    }
+
+    public List<Notification> getNotifications(String topic, UUID offset) {
+        // topic format:  t:in_app_topic_name@app_name or d:device_id@app_name
+
+        if (offset == null) {
+            offset = UUIDs.startOf(0);
+        }
+
+        PreparedStatement ps = session.prepare("SELECT create_time, sender, content FROM messages " +
+                                               "WHERE topic = ? AND create_time > ? ORDER BY create_time ASC");
+        BoundStatement bs = ps.bind(topic, offset);
+        ResultSet rs = session.execute(bs);
+
+        List<Notification> notifications = new ArrayList<Notification>();
         for (Row row: rs) {
-            String appName = row.getString(0);
-            UUID createTime = row.getUUID(1);
-            UUID msgCreateTime = row.getUUID(2);
-            items.add(new QueueItem(appName, createTime, msgCreateTime));
-        }
+            UUID createTime = row.getUUID(0);
+            String sender = row.getString(1);
+            String content = row.getString(2);
 
-        if (items.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<Notification> notifications = new ArrayList<Notification>(items.size());
-        ps = session.prepare("SELECT topic, sender, content FROM messages WHERE app_name=? AND create_time=?");
-        for (QueueItem item: items) {
-            bs = ps.bind(item.getAppName(), item.getMsgCreateTime());
-            rs = session.execute(bs);
-
-            Row row = rs.one();
-            if (row != null) {
-                String topic = row.getString(0);
-                String sender = row.getString(1);
-                String content = row.getString(2);
-                notifications.add(new Notification(item.getAppName(), item.getCreateTime(),
-                        topic, sender, content));
-            }
+            notifications.add(new Notification(topic, createTime, sender, content));
         }
 
         return notifications;
+    }
+
+    public void setOnline(String deviceId, InetAddress lanListenIp, int lanListenPort) {
+        PreparedStatement ps = session.prepare("INSERT INTO online_devices(device_id, gate_svr_ip, gate_svr_port) VALUES(?, ?, ?)");
+        BoundStatement bs = ps.bind(deviceId, lanListenIp, (short)lanListenPort);
+        session.execute(bs);
+    }
+
+    public void setOffline(String deviceId, InetAddress lanListenIp, int lanListenPort) {
+        PreparedStatement ps = session.prepare("DELETE FROM online_devices WHERE device_id = ? IF gate_svr_ip = ? AND gate_svr_port = ?");
+        BoundStatement bs = ps.bind(deviceId, lanListenIp, (short)lanListenPort);
+        session.execute(bs);
     }
 
     @Override

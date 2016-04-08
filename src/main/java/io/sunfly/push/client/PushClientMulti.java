@@ -10,9 +10,12 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
-import io.sunfly.push.PushMessageDecoder;
-import io.sunfly.push.PushMessageEncoder;
-import io.sunfly.push.message.LoginRequest;
+import io.sunfly.push.wan.WanMessageDecoder;
+import io.sunfly.push.wan.WanMessageEncoder;
+import io.sunfly.push.wan.message.LoginRequest;
+
+import java.util.Collections;
+import java.util.UUID;
 
 public class PushClientMulti {
     public static void main(String[] args) throws Exception {
@@ -37,16 +40,18 @@ public class PushClientMulti {
             protected void initChannel(SocketChannel ch) throws Exception {
                 ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast(new IdleStateHandler(0, 30, 0));  // 30 seconds
-                pipeline.addLast(new PushMessageEncoder());
-                pipeline.addLast(new PushMessageDecoder());
+                pipeline.addLast(new WanMessageEncoder());
+                pipeline.addLast(new WanMessageDecoder());
                 pipeline.addLast(new ClientHandler());
             }
         });
 
         // connect to server
         for (int i = startSeq; i < endSeq; ++i) {
+            final String deviceId = String.format("push-test-%07d", i);
             ChannelFuture f = b.connect(ip, port).sync();
-            f.channel().writeAndFlush(new LoginRequest(String.format("push-dev-%07d", i)));
+            f.channel().attr(ClientHandler.AK_DEVICE_ID).set(deviceId);
+            f.channel().writeAndFlush(new LoginRequest(deviceId, Collections.<String, UUID>emptyMap()));
         }
 
         System.out.println("All connected...");

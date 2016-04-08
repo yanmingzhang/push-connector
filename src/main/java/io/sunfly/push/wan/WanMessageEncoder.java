@@ -1,11 +1,11 @@
-package io.sunfly.push;
+package io.sunfly.push.wan;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
-import io.sunfly.push.message.Message;
+import io.sunfly.push.Message;
 
-public class PushMessageEncoder extends MessageToByteEncoder<Message> {
+public class WanMessageEncoder extends MessageToByteEncoder<Message> {
 
     @Override
     public void encode(ChannelHandlerContext ctx, Message msg, ByteBuf out) throws Exception {
