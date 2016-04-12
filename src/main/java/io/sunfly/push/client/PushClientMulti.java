@@ -14,20 +14,20 @@ import io.sunfly.push.wan.WanMessageDecoder;
 import io.sunfly.push.wan.WanMessageEncoder;
 import io.sunfly.push.wan.message.LoginRequest;
 
+import java.net.InetSocketAddress;
 import java.util.Collections;
+import java.util.Random;
 import java.util.UUID;
 
 public class PushClientMulti {
     public static void main(String[] args) throws Exception {
-        if (args.length != 4) {
-            System.err.println("Usage: PushClientMulti <ip> <port> <start_client_seq> <end_client_seq>");
+        if (args.length != 2) {
+            System.err.println("Usage: PushClientMulti <conn_str> <client_count>");
             return;
         }
 
-        final String ip = args[0];
-        final int port = Integer.parseInt(args[1]);
-        final int startSeq = Integer.parseInt(args[2]);
-        final int endSeq = Integer.parseInt(args[3]);
+        InetSocketAddress[] addresses = parseAddresses(args[0]);
+        int clientCount = Integer.parseInt(args[1]);
 
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
@@ -47,15 +47,43 @@ public class PushClientMulti {
         });
 
         // connect to server
-        for (int i = startSeq; i < endSeq; ++i) {
+        Random random = new Random();
+        for (int i = 0; i < clientCount; ++i) {
             final String deviceId = String.format("push-test-%07d", i);
-            ChannelFuture f = b.connect(ip, port).sync();
-            f.channel().attr(ClientHandler.AK_DEVICE_ID).set(deviceId);
-            f.channel().writeAndFlush(new LoginRequest(deviceId, Collections.<String, UUID>emptyMap()));
+            final InetSocketAddress address = addresses[random.nextInt(addresses.length)];
+            ChannelFuture f = b.connect(address).await();
+            if (f.isSuccess()) {
+                f.channel().attr(ClientHandler.AK_DEVICE_ID).set(deviceId);
+                f.channel().writeAndFlush(new LoginRequest(deviceId, Collections.<String, UUID>emptyMap()));
+            } else {
+                System.err.println("Connect to endpoint " + address + " failed");
+            }
         }
 
         System.out.println("All connected...");
 
         Thread.sleep(Long.MAX_VALUE);
+    }
+
+    private static InetSocketAddress[] parseAddresses(String addresses) {
+        String[] addrs = addresses.split(" *, *");
+        InetSocketAddress[] res = new InetSocketAddress[addrs.length];
+        for (int i = 0; i < addrs.length; i++) {
+            res[i] = parseAddress(addrs[i]);
+        }
+
+        return res;
+    }
+
+    private static InetSocketAddress parseAddress(String addressString) {
+        int idx = addressString.indexOf(':');
+        if (idx == -1) {
+            throw new IllegalArgumentException(addressString);
+        }
+
+        String ip = addressString.substring(0, idx);
+        int port = Integer.parseInt(addressString.substring(idx + 1));
+
+        return new InetSocketAddress(ip, port);
     }
 }
