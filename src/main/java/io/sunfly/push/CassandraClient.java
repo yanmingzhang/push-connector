@@ -23,15 +23,31 @@ public class CassandraClient implements Closeable {
     private final Cluster cluster;
     private final Session session;
 
+    private final PreparedStatement psGetDevice;
+    private final PreparedStatement psGetNotifications;
+    private final PreparedStatement psDeviceOnline;
+    private final PreparedStatement psDeviceOffline;
+
     public CassandraClient(String address) {
         cluster = Cluster.builder().addContactPoints(address).build();
         session = cluster.connect("push");
+
+        psGetDevice = session.prepare(
+                "SELECT last_active_time, province, topics FROM devices WHERE device_id = ?");
+
+        psGetNotifications = session.prepare(
+                "SELECT create_time, sender, content FROM messages " +
+                "WHERE topic = ? AND create_time > ? ORDER BY create_time ASC");
+
+        psDeviceOnline = session.prepare(
+                "INSERT INTO online_devices(device_id, gate_svr_ip, gate_svr_port) VALUES(?, ?, ?)");
+
+        psDeviceOffline = session.prepare(
+                "DELETE FROM online_devices WHERE device_id = ? IF gate_svr_ip = ? AND gate_svr_port = ?");
     }
 
     public Device getDevice(String deviceId) {
-        PreparedStatement ps = session.prepare("SELECT last_active_time, province, topics FROM devices WHERE device_id=?");
-        BoundStatement bs = ps.bind(deviceId);
-
+        BoundStatement bs = psGetDevice.bind(deviceId);
         Row row = session.execute(bs).one();
         if (row == null) {
             return null;
@@ -46,14 +62,11 @@ public class CassandraClient implements Closeable {
 
     public List<Notification> getNotifications(String topic, UUID offset) {
         // topic format:  t:in_app_topic_name@app_name or d:device_id@app_name
-
         if (offset == null) {
             offset = UUIDs.startOf(0);
         }
 
-        PreparedStatement ps = session.prepare("SELECT create_time, sender, content FROM messages " +
-                                               "WHERE topic = ? AND create_time > ? ORDER BY create_time ASC");
-        BoundStatement bs = ps.bind(topic, offset);
+        BoundStatement bs = psGetNotifications.bind(topic, offset);
         ResultSet rs = session.execute(bs);
 
         List<Notification> notifications = new ArrayList<Notification>();
@@ -69,14 +82,12 @@ public class CassandraClient implements Closeable {
     }
 
     public void setOnline(String deviceId, InetAddress lanListenIp, int lanListenPort) {
-        PreparedStatement ps = session.prepare("INSERT INTO online_devices(device_id, gate_svr_ip, gate_svr_port) VALUES(?, ?, ?)");
-        BoundStatement bs = ps.bind(deviceId, lanListenIp, (short)lanListenPort);
+        BoundStatement bs = psDeviceOnline.bind(deviceId, lanListenIp, (short)lanListenPort);
         session.execute(bs);
     }
 
     public void setOffline(String deviceId, InetAddress lanListenIp, int lanListenPort) {
-        PreparedStatement ps = session.prepare("DELETE FROM online_devices WHERE device_id = ? IF gate_svr_ip = ? AND gate_svr_port = ?");
-        BoundStatement bs = ps.bind(deviceId, lanListenIp, (short)lanListenPort);
+        BoundStatement bs = psDeviceOffline.bind(deviceId, lanListenIp, (short)lanListenPort);
         session.execute(bs);
     }
 
