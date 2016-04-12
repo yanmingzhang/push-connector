@@ -8,7 +8,12 @@ import io.netty.util.AttributeKey;
 import io.sunfly.push.model.Notification;
 import io.sunfly.push.wan.message.PushNotification;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ClientHandler extends ChannelInboundHandlerAdapter {
+    private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
+
     public static final AttributeKey<String> AK_DEVICE_ID = AttributeKey.newInstance("deviceId");
 
     @Override
@@ -28,17 +33,17 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
         if (msg instanceof PushNotification) {
             PushNotification pn = (PushNotification)msg;
             Notification notification = pn.getNotification();
-            System.out.format("deviceId = %s, topic = %s, create time = %s, content = %s\n",
+            logger.info("deviceId = {}, topic = {}, create_time = {}, content = {}",
                     ctx.channel().attr(AK_DEVICE_ID).get(), notification.getTopic(),
                     notification.getCreateTime(), notification.getContent());
         } else {
-            System.err.println("Unknown message: " + msg.getClass().getSimpleName());
+            logger.warn("Unknown message: " + msg.getClass().getSimpleName());
         }
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause)
             throws Exception {
-        cause.printStackTrace();
+        logger.warn("Exception caught", cause);
     }
 }
